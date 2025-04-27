@@ -47,12 +47,6 @@ export default function Sidebar({ expanded, setExpanded }) {
       icon: <PlusCircle size={20} />,
     },
     {
-      title: "Messages",
-      href: "/dashboard/messages",
-      icon: <MessagesSquare size={20} />,
-      badge: 2,
-    },
-    {
       title: "Payments",
       href: "/dashboard/payments",
       icon: <WalletCards size={20} />,
@@ -61,11 +55,6 @@ export default function Sidebar({ expanded, setExpanded }) {
       title: "Help & Support",
       href: "/dashboard/help",
       icon: <HelpCircle size={20} />,
-    },
-    {
-      title: "Settings",
-      href: "/dashboard/settings",
-      icon: <Settings size={20} />,
     },
   ];
 
