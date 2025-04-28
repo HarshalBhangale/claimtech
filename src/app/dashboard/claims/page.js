@@ -1,161 +1,471 @@
 'use client';
 
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { PlusCircle, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import BuddyMailbox from "@/components/buddy-mailbox";
+import { Mail, FileText, Clock, CheckCircle, AlertCircle, ArrowRight, Menu } from "lucide-react";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
-// Mock claims data
+// Mock data
 const mockClaims = [
   {
-    id: 'claim_1',
-    lender: { name: 'Barclays Bank', id: '1' },
-    status: 'AWAITING_SAR',
-    claimType: ['DCA', 'HIDDEN_COMMISSION'],
-    createdAt: '2023-10-15T10:30:00Z',
-    updatedAt: '2023-10-15T10:30:00Z'
+    id: '1',
+    lender: 'Barclays Bank',
+    status: 'IN_PROGRESS',
+    progress: 60,
+    lastUpdated: '2023-10-25T11:15:00Z',
+    hasDCA: true,
+    messages: [
+      {
+        id: 'msg_1',
+        sender: 'Barclays Bank',
+        subject: 'Claim Response',
+        date: '2023-10-25T11:15:00Z',
+        content: 'We have reviewed your claim and would like to offer you a goodwill payment of £2,500.',
+        read: true,
+        attachments: [
+          { name: 'Offer_Letter.pdf', size: '1.8MB' }
+        ]
+      }
+    ]
   },
   {
-    id: 'claim_2',
-    lender: { name: 'HSBC', id: '2' },
-    status: 'SAR_SUBMITTED',
-    claimType: ['DCA'],
-    createdAt: '2023-10-10T14:20:00Z',
-    updatedAt: '2023-10-12T09:15:00Z'
-  },
-  {
-    id: 'claim_3',
-    lender: { name: 'Lloyds Bank', id: '3' },
-    status: 'COMPLAINT_SUBMITTED',
-    claimType: ['HIDDEN_COMMISSION'],
-    createdAt: '2023-09-28T11:45:00Z',
-    updatedAt: '2023-10-05T16:30:00Z'
+    id: '2',
+    lender: 'Lloyds Bank',
+    status: 'PENDING',
+    progress: 30,
+    lastUpdated: '2023-10-20T14:30:00Z',
+    hasDCA: false,
+    messages: [
+      {
+        id: 'msg_2',
+        sender: 'Lloyds Bank',
+        subject: 'SAR Response',
+        date: '2023-10-20T14:30:00Z',
+        content: 'Please find attached the information you requested in your Subject Access Request.',
+        read: false,
+        attachments: [
+          { name: 'SAR_Response.pdf', size: '2.4MB' }
+        ]
+      }
+    ]
   }
 ];
 
-// Helper function to render status badge
+function ProgressTracker({ progress, status }) {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'IN_PROGRESS':
+        return 'bg-primary';
+      case 'PENDING':
+        return 'bg-yellow-500';
+      case 'COMPLETED':
+        return 'bg-green-500';
+      case 'FAILED':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">Progress</span>
+        <span className="text-sm text-muted-foreground">{progress}%</span>
+      </div>
+      <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${getStatusColor(status)}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function StatusBadge({ status }) {
   switch (status) {
-    case 'AWAITING_SAR':
+    case 'IN_PROGRESS':
       return (
-        <div className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-amber-100 text-amber-800">
+        <Badge variant="default">
           <Clock className="h-3 w-3 mr-1" />
-          Awaiting SAR
-        </div>
+          In Progress
+        </Badge>
       );
-    case 'SAR_SUBMITTED':
+    case 'PENDING':
       return (
-        <div className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-          <FileText className="h-3 w-3 mr-1" />
-          SAR Submitted
-        </div>
-      );
-    case 'COMPLAINT_SUBMITTED':
-      return (
-        <div className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
-          <CheckCircle className="h-3 w-3 mr-1" />
-          Complaint Submitted
-        </div>
+        <Badge variant="warning">
+          <Clock className="h-3 w-3 mr-1" />
+          Pending
+        </Badge>
       );
     case 'COMPLETED':
       return (
-        <div className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+        <Badge variant="success">
           <CheckCircle className="h-3 w-3 mr-1" />
           Completed
-        </div>
+        </Badge>
+      );
+    case 'FAILED':
+      return (
+        <Badge variant="destructive">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Failed
+        </Badge>
       );
     default:
-      return (
-        <div className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-          <AlertCircle className="h-3 w-3 mr-1" />
-          {status}
-        </div>
-      );
+      return null;
   }
 }
 
 export default function ClaimsDashboard() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState('overview');
+  const isMobile = useMediaQuery('(max-width: 768px)');
+
+  const handleSendMessage = async (message) => {
+    // TODO: Implement message sending logic
+    console.log('Sending message:', message);
+  };
+
+  const renderMobileClaimsList = () => (
+    <div className="space-y-4">
+      {mockClaims.map((claim) => (
+        <Card key={claim.id}>
+          <CardContent className="p-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-medium">{claim.lender}</h3>
+                  {claim.hasDCA && (
+                    <Badge variant="warning">DCA</Badge>
+                  )}
+                </div>
+                <StatusBadge status={claim.status} />
+              </div>
+              <ProgressTracker progress={claim.progress} status={claim.status} />
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span>Last updated: {new Date(claim.lastUpdated).toLocaleDateString()}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push(`/dashboard/claims/${claim.id}`)}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderDesktopClaimsTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Lender</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Progress</TableHead>
+          <TableHead>Last Updated</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {mockClaims.map((claim) => (
+          <TableRow key={claim.id}>
+            <TableCell>
+              <div className="flex items-center space-x-2">
+                <span>{claim.lender}</span>
+                {claim.hasDCA && (
+                  <Badge variant="warning">DCA</Badge>
+                )}
+              </div>
+            </TableCell>
+            <TableCell>
+              <StatusBadge status={claim.status} />
+            </TableCell>
+            <TableCell>
+              <ProgressTracker progress={claim.progress} status={claim.status} />
+            </TableCell>
+            <TableCell>
+              {new Date(claim.lastUpdated).toLocaleDateString()}
+            </TableCell>
+            <TableCell>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push(`/dashboard/claims/${claim.id}`)}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Claims</h1>
-        <Link href="/dashboard/claims/new">
-          <Button className="bg-gradient-to-r from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600">
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Start New Claim
-          </Button>
-        </Link>
-      </div>
-      
-      {mockClaims.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 text-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Lender</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Claim Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Date Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {mockClaims.map((claim) => (
-                  <tr key={claim.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {claim.lender.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex flex-wrap gap-1">
-                        {claim.claimType.includes('DCA') && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                            DCA
-                          </span>
-                        )}
-                        {claim.claimType.includes('HIDDEN_COMMISSION') && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                            Hidden Commission
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <StatusBadge status={claim.status} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(claim.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Link 
-                        href={`/dashboard/claims/${claim.id}`}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View Details
-                      </Link>
-                      {claim.status === 'AWAITING_SAR' && (
-                        <Link 
-                          href={`/dashboard/claims/${claim.id}/sar-request`}
-                          className="ml-4 text-green-600 hover:text-green-900"
-                        >
-                          Generate SAR
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
-          <h3 className="text-lg font-medium text-gray-700 mb-2">No Claims Yet</h3>
-          <p className="text-gray-500 mb-6">
-            Start by creating a new claim to check if you're eligible for compensation.
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Claims Management</h1>
+          <p className="text-muted-foreground">
+            Track and manage your claims with lenders
           </p>
-          <Link href="/dashboard/claims/new">
-            <Button>Start Your First Claim</Button>
-          </Link>
+        </div>
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <SheetHeader>
+                  <SheetTitle>Navigation</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-2 mt-4">
+                  <Button
+                    variant={activeTab === 'overview' ? 'default' : 'ghost'}
+                    onClick={() => setActiveTab('overview')}
+                    className="justify-start"
+                  >
+                    Overview
+                  </Button>
+                  <Button
+                    variant={activeTab === 'mailbox' ? 'default' : 'ghost'}
+                    onClick={() => setActiveTab('mailbox')}
+                    className="justify-start"
+                  >
+                    Buddy Mailbox
+                  </Button>
+                  <Button
+                    variant={activeTab === 'progress' ? 'default' : 'ghost'}
+                    onClick={() => setActiveTab('progress')}
+                    className="justify-start"
+                  >
+                    Progress Tracker
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
+          <Button onClick={() => router.push('/dashboard/claims/new')}>
+            <FileText className="h-4 w-4 mr-2" />
+            New Claim
+          </Button>
+        </div>
+      </div>
+
+      {!isMobile && (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="mailbox">Buddy Mailbox</TabsTrigger>
+            <TabsTrigger value="progress">Progress Tracker</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Active Claims</CardTitle>
+                <CardDescription>
+                  View and manage your current claims
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  {renderDesktopClaimsTable()}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Messages</CardTitle>
+                <CardDescription>
+                  Latest communications from lenders
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {mockClaims.flatMap(claim => claim.messages)
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .slice(0, 3)
+                    .map((message) => (
+                      <div key={message.id} className="flex items-start space-x-4">
+                        <Mail className="h-5 w-5 text-muted-foreground mt-1" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">{message.subject}</h4>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(message.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{message.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="mailbox">
+            <BuddyMailbox
+              messages={mockClaims.flatMap(claim => claim.messages)}
+              onSendMessage={handleSendMessage}
+            />
+          </TabsContent>
+
+          <TabsContent value="progress">
+            <Card>
+              <CardHeader>
+                <CardTitle>Lender Progress Tracker</CardTitle>
+                <CardDescription>
+                  Track the progress of your claims with each lender
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {mockClaims.map((claim) => (
+                    <div key={claim.id} className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-medium">{claim.lender}</h3>
+                          {claim.hasDCA && (
+                            <Badge variant="warning">DCA</Badge>
+                          )}
+                        </div>
+                        <StatusBadge status={claim.status} />
+                      </div>
+                      <ProgressTracker progress={claim.progress} status={claim.status} />
+                      <div className="text-sm text-muted-foreground">
+                        Last updated: {new Date(claim.lastUpdated).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {isMobile && (
+        <div className="space-y-6">
+          {activeTab === 'overview' && (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Active Claims</CardTitle>
+                  <CardDescription>
+                    View and manage your current claims
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {renderMobileClaimsList()}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Messages</CardTitle>
+                  <CardDescription>
+                    Latest communications from lenders
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {mockClaims.flatMap(claim => claim.messages)
+                      .sort((a, b) => new Date(b.date) - new Date(a.date))
+                      .slice(0, 3)
+                      .map((message) => (
+                        <div key={message.id} className="flex items-start space-x-4">
+                          <Mail className="h-5 w-5 text-muted-foreground mt-1" />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium">{message.subject}</h4>
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(message.date).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{message.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {activeTab === 'mailbox' && (
+            <BuddyMailbox
+              messages={mockClaims.flatMap(claim => claim.messages)}
+              onSendMessage={handleSendMessage}
+            />
+          )}
+
+          {activeTab === 'progress' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Lender Progress Tracker</CardTitle>
+                <CardDescription>
+                  Track the progress of your claims with each lender
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {mockClaims.map((claim) => (
+                    <div key={claim.id} className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="font-medium">{claim.lender}</h3>
+                          {claim.hasDCA && (
+                            <Badge variant="warning">DCA</Badge>
+                          )}
+                        </div>
+                        <StatusBadge status={claim.status} />
+                      </div>
+                      <ProgressTracker progress={claim.progress} status={claim.status} />
+                      <div className="text-sm text-muted-foreground">
+                        Last updated: {new Date(claim.lastUpdated).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>

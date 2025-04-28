@@ -2,606 +2,502 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, FileText, Car, Building, CreditCard } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Car, Building, CreditCard, Search, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { CheckCircle, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Combobox } from "@/components/ui/combobox";
+import { AddressSuggestions } from "@/components/address-suggestions";
 
-// Step content components
-const StepOne = ({ formData, updateFormData, goToNextStep }) => {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-800">Claim Details</h2>
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="claimType" className="block text-sm font-medium text-gray-700 mb-1">
-            Claim Type
-          </label>
-          <select
-            id="claimType"
-            value={formData.claimType}
-            onChange={(e) => updateFormData("claimType", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            required
-          >
-            <option value="">Select claim type</option>
-            <option value="PCP">Personal Contract Purchase (PCP)</option>
-            <option value="HP">Hire Purchase (HP)</option>
-            <option value="PCH">Personal Contract Hire (PCH)</option>
-          </select>
-        </div>
-        
-        <div>
-          <label htmlFor="lender" className="block text-sm font-medium text-gray-700 mb-1">
-            Lender / Finance Company
-          </label>
-          <select
-            id="lender"
-            value={formData.lender}
-            onChange={(e) => updateFormData("lender", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            required
-          >
-            <option value="">Select lender</option>
-            <option value="volkswagen">Volkswagen Financial Services</option>
-            <option value="black_horse">Black Horse</option>
-            <option value="santander">Santander Consumer Finance</option>
-            <option value="close_brothers">Close Brothers</option>
-            <option value="barclays">Barclays Partner Finance</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-        <div>
-          <label htmlFor="agreementNumber" className="block text-sm font-medium text-gray-700 mb-1">
-            Agreement Number
-          </label>
-          <input
-            type="text"
-            id="agreementNumber"
-            value={formData.agreementNumber}
-            onChange={(e) => updateFormData("agreementNumber", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g. FIN12345678"
-            required
-          />
-        </div>
+// Mock lenders data
+const lenders = [
+  { id: 1, name: "Barclays Bank", hasDCA: true },
+  { id: 2, name: "HSBC", hasDCA: false },
+  { id: 3, name: "Lloyds Bank", hasDCA: true },
+  { id: 4, name: "NatWest", hasDCA: false },
+  { id: 5, name: "Santander", hasDCA: true },
+  { id: 6, name: "Royal Bank of Scotland", hasDCA: false },
+  { id: 7, name: "Nationwide", hasDCA: true },
+  { id: 8, name: "TSB", hasDCA: false },
+];
 
-        <div>
-          <label htmlFor="agreementDate" className="block text-sm font-medium text-gray-700 mb-1">
-            Agreement Date
-          </label>
-          <input
-            type="date"
-            id="agreementDate"
-            value={formData.agreementDate}
-            onChange={(e) => updateFormData("agreementDate", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            required
-          />
-        </div>
-      </div>
-
-      <button
-        onClick={goToNextStep}
-        className="w-full mt-6 flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-      >
-        Continue
-        <ArrowRight className="ml-2 h-4 w-4" />
-      </button>
-    </div>
-  );
+// Mock data for testing
+const mockLender = {
+  id: '1',
+  name: 'Barclays Bank',
+  hasDCA: true
 };
 
-const StepTwo = ({ formData, updateFormData, goToPreviousStep, goToNextStep }) => {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-800">Vehicle Information</h2>
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="vehicleMake" className="block text-sm font-medium text-gray-700 mb-1">
-            Vehicle Make
-          </label>
-          <input
-            type="text"
-            id="vehicleMake"
-            value={formData.vehicleMake}
-            onChange={(e) => updateFormData("vehicleMake", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g. Ford"
-            required
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="vehicleModel" className="block text-sm font-medium text-gray-700 mb-1">
-            Vehicle Model
-          </label>
-          <input
-            type="text"
-            id="vehicleModel"
-            value={formData.vehicleModel}
-            onChange={(e) => updateFormData("vehicleModel", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g. Focus"
-            required
-          />
-        </div>
+const subscriptionPlans = [
+  {
+    id: 'monthly',
+    name: 'Monthly Subscription',
+    price: '£24.99',
+    interval: 'month',
+    features: [
+      'Unlimited claims',
+      'Priority support',
+      'Regular updates',
+      'Cancel anytime'
+    ]
+  },
+  {
+    id: 'one-time',
+    name: 'One-time Payment',
+    price: '£99',
+    features: [
+      'Single claim processing',
+      'Email support',
+      'One-time payment'
+    ]
+  }
+];
 
-        <div>
-          <label htmlFor="vehicleReg" className="block text-sm font-medium text-gray-700 mb-1">
-            Registration Number
-          </label>
-          <input
-            type="text"
-            id="vehicleReg"
-            value={formData.vehicleReg}
-            onChange={(e) => updateFormData("vehicleReg", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g. AB12 CDE"
-            required
-          />
-        </div>
+// Step components
+const LenderSelection = ({ selectedLenders, onSelect, onRemove }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [selectedLender, setSelectedLender] = useState(null);
 
-        <div>
-          <label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700 mb-1">
-            Purchase Price (£)
-          </label>
-          <input
-            type="number"
-            id="purchasePrice"
-            value={formData.purchasePrice}
-            onChange={(e) => updateFormData("purchasePrice", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="e.g. 15000"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="flex mt-6 space-x-3">
-        <button
-          onClick={goToPreviousStep}
-          className="flex-1 flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-800 font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </button>
-        <button
-          onClick={goToNextStep}
-          className="flex-1 flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-        >
-          Continue
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </button>
-      </div>
-    </div>
+  const filteredLenders = lenders.filter(lender =>
+    lender.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-};
 
-const StepThree = ({ formData, updateFormData, goToPreviousStep, goToNextStep }) => {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-800">Your Complaint</h2>
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="complaintReason" className="block text-sm font-medium text-gray-700 mb-1">
-            Reason for Complaint
-          </label>
-          <select
-            id="complaintReason"
-            value={formData.complaintReason}
-            onChange={(e) => updateFormData("complaintReason", e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            required
-          >
-            <option value="">Select reason</option>
-            <option value="commission">Undisclosed Commission</option>
-            <option value="misrepresentation">Misrepresentation of Terms</option>
-            <option value="affordability">Affordability Issues</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        
-        <div>
-          <label htmlFor="complaintDetails" className="block text-sm font-medium text-gray-700 mb-1">
-            Additional Details
-          </label>
-          <textarea
-            id="complaintDetails"
-            value={formData.complaintDetails}
-            onChange={(e) => updateFormData("complaintDetails", e.target.value)}
-            rows={4}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Please provide any additional details about your complaint..."
-          />
-        </div>
-
-        <div className="flex items-start">
-          <div className="flex items-center h-5">
-            <input
-              id="hasComplainedBefore"
-              type="checkbox"
-              checked={formData.hasComplainedBefore}
-              onChange={(e) => updateFormData("hasComplainedBefore", e.target.checked)}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-          </div>
-          <label htmlFor="hasComplainedBefore" className="ml-3 block text-sm text-gray-700">
-            I have already complained to the lender about this issue
-          </label>
-        </div>
-
-        {formData.hasComplainedBefore && (
-          <div>
-            <label htmlFor="complaintDate" className="block text-sm font-medium text-gray-700 mb-1">
-              Date of Previous Complaint
-            </label>
-            <input
-              type="date"
-              id="complaintDate"
-              value={formData.complaintDate}
-              onChange={(e) => updateFormData("complaintDate", e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex mt-6 space-x-3">
-        <button
-          onClick={goToPreviousStep}
-          className="flex-1 flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-800 font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </button>
-        <button
-          onClick={goToNextStep}
-          className="flex-1 flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-        >
-          Review
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const StepFour = ({ formData, goToPreviousStep, submitClaim }) => {
-  const getLenderName = (code) => {
-    const lenders = {
-      volkswagen: "Volkswagen Financial Services",
-      black_horse: "Black Horse",
-      santander: "Santander Consumer Finance",
-      close_brothers: "Close Brothers",
-      barclays: "Barclays Partner Finance",
-      other: "Other"
-    };
-    return lenders[code] || code;
+  const handleLenderSelect = (lender) => {
+    setSelectedLender(lender);
+    setShowConfirmation(true);
   };
 
-  const getReasonText = (code) => {
-    const reasons = {
-      commission: "Undisclosed Commission",
-      misrepresentation: "Misrepresentation of Terms",
-      affordability: "Affordability Issues",
-      other: "Other"
-    };
-    return reasons[code] || code;
+  const handleConfirm = () => {
+    if (selectedLender && !selectedLenders.some(l => l.id === selectedLender.id)) {
+      onSelect(selectedLender);
+    }
+    setShowConfirmation(false);
+    setSelectedLender(null);
   };
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-800">Review Your Claim</h2>
-      
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h3 className="font-medium text-gray-800 mb-3 flex items-center">
-          <FileText className="mr-2 h-5 w-5 text-blue-600" />
-          Claim Details
-        </h3>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Claim Type</dt>
-            <dd className="font-medium">{formData.claimType}</dd>
-          </div>
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Lender</dt>
-            <dd className="font-medium">{getLenderName(formData.lender)}</dd>
-          </div>
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Agreement Number</dt>
-            <dd className="font-medium">{formData.agreementNumber}</dd>
-          </div>
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Agreement Date</dt>
-            <dd className="font-medium">{formData.agreementDate}</dd>
-          </div>
-        </dl>
+      <div className="relative">
+        <Input
+          placeholder="Search lenders..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
       </div>
 
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h3 className="font-medium text-gray-800 mb-3 flex items-center">
-          <Car className="mr-2 h-5 w-5 text-blue-600" />
-          Vehicle Information
-        </h3>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Make</dt>
-            <dd className="font-medium">{formData.vehicleMake}</dd>
-          </div>
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Model</dt>
-            <dd className="font-medium">{formData.vehicleModel}</dd>
-          </div>
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Registration</dt>
-            <dd className="font-medium">{formData.vehicleReg}</dd>
-          </div>
-          <div className="sm:col-span-1">
-            <dt className="text-gray-500">Purchase Price</dt>
-            <dd className="font-medium">£{formData.purchasePrice}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <h3 className="font-medium text-gray-800 mb-3 flex items-center">
-          <Building className="mr-2 h-5 w-5 text-blue-600" />
-          Complaint Information
-        </h3>
-        <dl className="grid grid-cols-1 gap-y-2 text-sm">
-          <div>
-            <dt className="text-gray-500">Reason</dt>
-            <dd className="font-medium">{getReasonText(formData.complaintReason)}</dd>
-          </div>
-          {formData.complaintDetails && (
+      <div className="space-y-2">
+        {filteredLenders.map((lender) => (
+          <div
+            key={lender.id}
+            className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+            onClick={() => handleLenderSelect(lender)}
+          >
             <div>
-              <dt className="text-gray-500">Details</dt>
-              <dd className="font-medium">{formData.complaintDetails}</dd>
+              <h3 className="font-medium">{lender.name}</h3>
+              <p className="text-sm text-muted-foreground">
+                {lender.hasDCA ? "Has DCA involvement" : "No DCA involvement"}
+              </p>
             </div>
-          )}
-          <div>
-            <dt className="text-gray-500">Previous Complaint</dt>
-            <dd className="font-medium">{formData.hasComplainedBefore ? "Yes" : "No"}</dd>
           </div>
-          {formData.hasComplainedBefore && formData.complaintDate && (
-            <div>
-              <dt className="text-gray-500">Previous Complaint Date</dt>
-              <dd className="font-medium">{formData.complaintDate}</dd>
+        ))}
+      </div>
+
+      {selectedLenders.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="font-medium">Selected Lenders</h3>
+          {selectedLenders.map((lender) => (
+            <div
+              key={lender.id}
+              className="flex items-center justify-between p-4 border rounded-lg bg-accent"
+            >
+              <div>
+                <h3 className="font-medium">{lender.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {lender.hasDCA ? "Has DCA involvement" : "No DCA involvement"}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onRemove(lender.id)}
+              >
+                Remove
+              </Button>
             </div>
-          )}
-        </dl>
-      </div>
-
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <p className="text-sm text-blue-800">
-          By submitting this claim, you confirm that all the information provided is accurate to the best of your knowledge.
-        </p>
-      </div>
-
-      <div className="flex mt-6 space-x-3">
-        <button
-          onClick={goToPreviousStep}
-          className="flex-1 flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-800 font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </button>
-        <button
-          onClick={submitClaim}
-          className="flex-1 flex items-center justify-center px-6 py-3 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-        >
-          Submit Claim
-          <Check className="ml-2 h-4 w-4" />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const SuccessStep = ({ claimNumber, router }) => {
-  return (
-    <div className="text-center space-y-6">
-      <div className="flex justify-center">
-        <div className="rounded-full bg-green-100 p-3">
-          <Check className="h-8 w-8 text-green-600" />
-        </div>
-      </div>
-      
-      <h2 className="text-2xl font-bold text-gray-800">Claim Submitted Successfully!</h2>
-      
-      <p className="text-gray-600">
-        Your claim has been successfully submitted and is now being processed. We will keep you updated on its progress.
-      </p>
-      
-      <div className="py-4">
-        <p className="text-sm text-gray-500">Claim Reference</p>
-        <p className="text-xl font-bold text-blue-600">{claimNumber}</p>
-      </div>
-      
-      <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 border border-blue-200">
-        We've sent a confirmation email with your claim details and next steps.
-      </div>
-      
-      <div className="pt-4 space-y-3">
-        <button
-          onClick={() => router.push('/dashboard/claims')}
-          className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-        >
-          View My Claims
-        </button>
-        
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="w-full flex items-center justify-center px-6 py-3 bg-gray-100 text-gray-800 font-medium rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-        >
-          Back to Dashboard
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Main new claim component
-export default function NewClaimPage() {
-  const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    claimType: "",
-    lender: "",
-    agreementNumber: "",
-    agreementDate: "",
-    vehicleMake: "",
-    vehicleModel: "",
-    vehicleReg: "",
-    purchasePrice: "",
-    complaintReason: "",
-    complaintDetails: "",
-    hasComplainedBefore: false,
-    complaintDate: ""
-  });
-  const [claimNumber, setClaimNumber] = useState("");
-
-  const updateFormData = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const goToNextStep = () => {
-    setCurrentStep(prev => prev + 1);
-    // Scroll to top when changing steps
-    window.scrollTo(0, 0);
-  };
-
-  const goToPreviousStep = () => {
-    setCurrentStep(prev => prev - 1);
-    // Scroll to top when changing steps
-    window.scrollTo(0, 0);
-  };
-
-  const submitClaim = async () => {
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Generate mock claim number
-    const randomId = Math.floor(10000 + Math.random() * 90000);
-    const claimRef = `CL-${new Date().getFullYear()}-${randomId}`;
-    setClaimNumber(claimRef);
-    
-    setIsSubmitting(false);
-    goToNextStep();
-  };
-
-  // Progress indicator steps
-  const steps = [
-    { id: 1, name: "Details" },
-    { id: 2, name: "Vehicle" },
-    { id: 3, name: "Complaint" },
-    { id: 4, name: "Review" }
-  ];
-
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Start New Claim</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          {currentStep < 5 ? "Complete the form below to initiate your car finance claim." : ""}
-        </p>
-      </div>
-
-      {/* Progress steps - show only if not on success step */}
-      {currentStep < 5 && (
-        <div className="mb-8">
-          <nav aria-label="Progress">
-            <ol className="flex items-center">
-              {steps.map((step, stepIdx) => (
-                <li key={step.id} className={`relative pr-8 ${stepIdx === steps.length - 1 ? "flex-1" : ""}`}>
-                  <div className="flex items-center">
-                    <div
-                      className={`relative flex h-8 w-8 items-center justify-center rounded-full ${
-                        currentStep >= step.id
-                          ? "bg-blue-600"
-                          : "bg-gray-200"
-                      }`}
-                    >
-                      {currentStep > step.id ? (
-                        <Check className="h-5 w-5 text-white" aria-hidden="true" />
-                      ) : (
-                        <span className={`text-sm font-semibold ${currentStep >= step.id ? "text-white" : "text-gray-600"}`}>
-                          {step.id}
-                        </span>
-                      )}
-                    </div>
-                    <div className={`hidden sm:block ml-2 text-sm ${currentStep >= step.id ? "font-medium text-gray-900" : "text-gray-500"}`}>
-                      {step.name}
-                    </div>
-                  </div>
-                  {stepIdx !== steps.length - 1 && (
-                    <div
-                      className={`absolute top-4 h-0.5 w-5 sm:w-full sm:right-8 ${
-                        currentStep > step.id ? "bg-blue-600" : "bg-gray-200"
-                      }`}
-                    />
-                  )}
-                </li>
-              ))}
-            </ol>
-          </nav>
+          ))}
         </div>
       )}
 
-      {/* Card containing the form steps */}
-      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-sm border border-gray-200">
-        {isSubmitting ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Submitting your claim...</p>
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Lender Selection</DialogTitle>
+            <DialogDescription>
+              {selectedLender?.hasDCA
+                ? `${selectedLender.name} has Debt Collection Agency (DCA) involvement. This may affect your claim process.`
+                : `${selectedLender?.name} has no DCA involvement.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmation(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+const UserDetails = ({ formData, onUpdate }) => {
+  const handleAddressSelect = (address) => {
+    onUpdate("address", {
+      line1: address.line_1,
+      line2: address.line_2,
+      town: address.town,
+      county: address.county,
+      postcode: address.postcode,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-medium mb-1">Full Name</label>
+          <Input
+            placeholder="Enter your full name"
+            value={formData.fullName}
+            onChange={(e) => onUpdate("fullName", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Email Address</label>
+          <Input
+            type="email"
+            placeholder="Enter your email"
+            value={formData.email}
+            onChange={(e) => onUpdate("email", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Phone Number</label>
+          <Input
+            type="tel"
+            placeholder="Enter your phone number"
+            value={formData.phone}
+            onChange={(e) => onUpdate("phone", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Address</label>
+          <div className="relative">
+            <Input
+              placeholder="Enter your postcode"
+              value={formData.address?.postcode || ''}
+              onChange={(e) => onUpdate("address", { ...formData.address, postcode: e.target.value })}
+              className="pl-10"
+            />
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
-        ) : (
-          <>
-            {currentStep === 1 && (
-              <StepOne
-                formData={formData}
-                updateFormData={updateFormData}
-                goToNextStep={goToNextStep}
-              />
-            )}
-            
-            {currentStep === 2 && (
-              <StepTwo
-                formData={formData}
-                updateFormData={updateFormData}
-                goToPreviousStep={goToPreviousStep}
-                goToNextStep={goToNextStep}
-              />
-            )}
-            
-            {currentStep === 3 && (
-              <StepThree
-                formData={formData}
-                updateFormData={updateFormData}
-                goToPreviousStep={goToPreviousStep}
-                goToNextStep={goToNextStep}
-              />
-            )}
-            
-            {currentStep === 4 && (
-              <StepFour
-                formData={formData}
-                goToPreviousStep={goToPreviousStep}
-                submitClaim={submitClaim}
-              />
-            )}
-            
-            {currentStep === 5 && (
-              <SuccessStep
-                claimNumber={claimNumber}
-                router={router}
-              />
-            )}
-          </>
-        )}
+          <AddressSuggestions onSelect={handleAddressSelect} />
+        </div>
       </div>
+    </div>
+  );
+};
+
+const PaymentStep = ({ onComplete }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const { sessionId } = await response.json();
+      
+      if (!sessionId) {
+        throw new Error('No session ID received');
+      }
+
+      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+      const { error: stripeError } = await stripe.redirectToCheckout({
+        sessionId,
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message);
+      }
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Subscription</CardTitle>
+            <CardDescription>Perfect for multiple claims</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">£24.99<span className="text-sm text-muted-foreground">/month</span></div>
+            <ul className="mt-4 space-y-2">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>Unlimited claims</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>Priority support</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>Regular updates</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>Cancel anytime</span>
+              </li>
+            </ul>
+            <Button
+              className="w-full mt-6"
+              onClick={handleCheckout}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Subscribe Now'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>One-time Payment</CardTitle>
+            <CardDescription>Ideal for single claims</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">£99</div>
+            <ul className="mt-4 space-y-2">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>Single claim processing</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>Email support</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-primary" />
+                <span>One-time payment</span>
+              </li>
+            </ul>
+            <Button
+              variant="outline"
+              className="w-full mt-6"
+              onClick={handleCheckout}
+              disabled={loading}
+            >
+              {loading ? 'Processing...' : 'Pay Once'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Development Skip Button */}
+      {process.env.NODE_ENV === 'development' && (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={onComplete}
+        >
+          Skip Payment (Dev Only)
+        </Button>
+      )}
+    </div>
+  );
+};
+
+// Main component
+export default function NewClaimPage() {
+  const router = useRouter();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    selectedLenders: [],
+    fullName: '',
+    email: '',
+    phone: '',
+    address: null,
+  });
+
+  const handleLenderSelect = (lender) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedLenders: [...prev.selectedLenders, lender]
+    }));
+  };
+
+  const handleLenderRemove = (lenderId) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedLenders: prev.selectedLenders.filter(l => l.id !== lenderId)
+    }));
+  };
+
+  const handleFormUpdate = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleNext = () => {
+    if (currentStep === 1 && formData.selectedLenders.length === 0) {
+      return;
+    }
+    if (currentStep === 2 && (!formData.fullName || !formData.email || !formData.phone || !formData.address)) {
+      return;
+    }
+    setCurrentStep(prev => prev + 1);
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => prev - 1);
+  };
+
+  return (
+    <div className="container max-w-4xl mx-auto py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">New Claim</h1>
+        <p className="text-muted-foreground mt-2">
+          Follow these steps to create your claim
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            currentStep >= 1 ? 'bg-primary text-primary-foreground' : 'bg-muted'
+          }`}>
+            1
+          </div>
+          <div className="ml-2">
+            <p className="text-sm font-medium">Select Lenders</p>
+          </div>
+        </div>
+        <div className="flex-1 h-0.5 bg-muted mx-4" />
+        <div className="flex items-center">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            currentStep >= 2 ? 'bg-primary text-primary-foreground' : 'bg-muted'
+          }`}>
+            2
+          </div>
+          <div className="ml-2">
+            <p className="text-sm font-medium">Your Details</p>
+          </div>
+        </div>
+        <div className="flex-1 h-0.5 bg-muted mx-4" />
+        <div className="flex items-center">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            currentStep >= 3 ? 'bg-primary text-primary-foreground' : 'bg-muted'
+          }`}>
+            3
+          </div>
+          <div className="ml-2">
+            <p className="text-sm font-medium">Payment</p>
+          </div>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {currentStep === 1 && 'Select Your Lenders'}
+            {currentStep === 2 && 'Your Details'}
+            {currentStep === 3 && 'Choose a Payment Plan'}
+          </CardTitle>
+          <CardDescription>
+            {currentStep === 1 && 'Choose the lenders you want to make claims against'}
+            {currentStep === 2 && 'Please provide your details to proceed'}
+            {currentStep === 3 && 'Select a payment plan to complete your claim'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {currentStep === 1 && (
+            <LenderSelection
+              selectedLenders={formData.selectedLenders}
+              onSelect={handleLenderSelect}
+              onRemove={handleLenderRemove}
+            />
+          )}
+          {currentStep === 2 && (
+            <UserDetails
+              formData={formData}
+              onUpdate={handleFormUpdate}
+            />
+          )}
+          {currentStep === 3 && (
+            <PaymentStep onComplete={() => router.push('/dashboard/claims')} />
+          )}
+
+          <div className="flex justify-between mt-6">
+            {currentStep > 1 && (
+              <Button variant="outline" onClick={handleBack}>
+                Back
+              </Button>
+            )}
+            {currentStep < 3 && (
+              <Button onClick={handleNext}>
+                Next
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 
